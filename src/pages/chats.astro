@@ -1,0 +1,25 @@
+---
+import Chat from "../components/Chat";
+import Layout from "../layouts/Layout.astro";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Chats</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <Layout> 
+    <div id="root">
+      <Chat client:only/>
+    </div>
+  </Layout>
+  </body>
+</html>
+

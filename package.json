@@ -1,0 +1,37 @@
+{
+  "name": "my-chat-app",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/react": "^4.2.0",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@fortawesome/fontawesome-svg-core": "^6.7.2",
+    "@fortawesome/react-fontawesome": "^0.2.2",
+    "@mui/icons-material": "^6.4.8",
+    "@mui/material": "^6.4.8",
+    "@tanstack/react-query": "^5.67.1",
+    "@tanstack/react-router": "^1.112.13",
+    "@tiptap/react": "^2.11.5",
+    "@tiptap/starter-kit": "^2.11.5",
+    "astro": "^5.2.6",
+    "crypto-js": "^4.2.0",
+    "expo-router": "^4.0.17",
+    "firebase": "^11.3.1",
+    "mkcert": "^3.2.0",
+    "node-forge": "^1.3.1",
+    "notistack": "^3.0.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-icons": "^5.4.0",
+    "react-toastify": "^11.0.5",
+    "socket.io-client": "^4.8.1",
+    "zustand": "^5.0.3"
+  }
+}
