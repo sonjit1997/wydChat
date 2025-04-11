@@ -1,7 +1,7 @@
-import UserList from "./UserList";
 import { useAuthStore } from "../store/useAuthStore";
 import Chat from "./Chat";
 import ChatPlaceholder from "./ChatPlaceholder";
+import UserList from "./UserList";
 
 const ChatLayout = ({ manuallyLogout, socket }) => {
   const { selectedUserOrGroup } = useAuthStore();
@@ -29,7 +29,7 @@ const styles = {
   container: {
     display: "flex",
     height: "100%",
-    backgroundColor: "#141414",
+    backgroundColor: "rgb(28 28 28)",
   },
   userListContainer: {
     width: "25%",

@@ -2,11 +2,11 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { useEffect, useRef, useState } from "react";
 import { FaUsers } from "react-icons/fa";
 import { IoEllipsisVertical } from "react-icons/io5";
+import { useNotifications } from "../context/NotificationContext";
 import { db } from "../firebase";
 import useFormattedMessageDateNew from "../hooks/useFormattedMessageDateNew";
 import { useAuthStore } from "../store/useAuthStore";
 import CreateGroup from "./CreateGroup";
-import { useNotifications } from "../context/NotificationContext";
 const UserList = ({ manuallyLogout }) => {
   const [groups, setGroups] = useState([]);
   const [combinedList, setCombinedList] = useState([]);
@@ -282,7 +282,7 @@ const styles = {
     top: 0,
     zIndex: 10,
     padding: "18.3px 14px",
-    backgroundColor: "#141414",
+    backgroundColor: "rgb(28 28 28)",
   },
   headerText: {
     margin: 0,
@@ -300,10 +300,10 @@ const styles = {
     position: "absolute",
     top: "30px",
     right: "-10px",
-    backgroundColor: "#1F1F1F",
+    backgroundColor: "#333333",
     borderRadius: "5px",
     padding: "5px",
-    // boxShadow: "0px 4px 6px rgba(49, 49, 49, 0.3)",
+    boxShadow: "0px 4px 6px rgba(49, 49, 49, 0.3)",
     zIndex: 1000,
   },
   menuItem: {
@@ -350,7 +350,7 @@ const styles = {
     fontSize: "14px",
     fontWeight: "bold",
     marginRight: "14px",
-    color: "#141414",
+    color: "rgb(28 28 28)",
   },
   groupIcon: {
     width: "35px",

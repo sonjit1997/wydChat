@@ -22,6 +22,8 @@ import { decryptGroupMessage, encryptGroupMessage } from "../utils/cryptoUtils";
 import ChatMessages from "./ChatMessages";
 import GroupChatHeader from "./GroupChatHeader";
 import InputBox from "./InputBox";
+import useDeleteUserMessage from "../hooks/useDeleteUserMessage";
+
 
 const GroupChat = ({ socket }) => {
   const {
@@ -44,6 +46,8 @@ const GroupChat = ({ socket }) => {
     handleEditMessage,
     handleUpdateMessage,
   } = useEditGroupMessage(groupKey);
+
+  const { handleDeleteMessage, isDeleting } = useDeleteUserMessage('groupMessages');
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -119,6 +123,8 @@ const GroupChat = ({ socket }) => {
         createdAt: new Date(),
         seenBy: [],
         isEdited: false,
+        isDeleted: false,
+        replyTo: replyingTo ? replyingTo.id : null,
       });
 
       await setDoc(
@@ -143,6 +149,7 @@ const GroupChat = ({ socket }) => {
       });
 
       setText("");
+      setReplyingTo(null); // Clear reply state after sending
       setIsUpdateLastConversation(!isUpdateLastConversation);
     } catch (error) {
       console.error("Error sending message: ", error);
@@ -181,6 +188,16 @@ const GroupChat = ({ socket }) => {
     }, 1500);
   };
 
+  const [replyingTo, setReplyingTo] = useState(null); 
+
+  const handleReply = (message) => {
+    setReplyingTo(message); // Set the message to reply to
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null); // Cancel the reply
+  };
+
   if (!selectedUserOrGroup) return null;
 
   return (
@@ -205,12 +222,17 @@ const GroupChat = ({ socket }) => {
         editText={editText}
         setEditText={setEditText}
         handleUpdateMessage={handleUpdateMessage}
+        handleDeleteMessage={handleDeleteMessage}
+        isDeleting={isDeleting}
+        handleReply={handleReply}
       />
       <InputBox
         sendMessage={handleSendMessage}
         setText={setText}
         text={text}
         handleTyping={handleTyping}
+        replyingTo={replyingTo}
+        cancelReply={cancelReply}
       />
     </div>
   );

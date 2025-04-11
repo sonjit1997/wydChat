@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import useScrollToBottom from "../hooks/useScrollToBottom";
-import { FaEye } from "react-icons/fa";
+import { FaEye, FaReply } from "react-icons/fa";
+import { MdDelete, MdEdit } from "react-icons/md";
 import { FiSend } from "react-icons/fi";
 
 const MessageRenderer = ({
@@ -19,7 +20,51 @@ const MessageRenderer = ({
   isLastMessage,
   canEdit,
   handleUpdateMessage,
+  handleReply,
+  messages,
+  handleDeleteMessage,
+  isDeleting,
 }) => {
+  const [showContextMenu, setShowContextMenu] = useState(false);
+  const { text, replyTo, isDeleted, createdAt, isEdited, senderName, seen } =
+    message;
+  const repliedToMessage = replyTo
+    ? messages.find((msg) => msg.id === replyTo)
+    : null;
+
+  // Early return if message is deleted
+  if (isDeleted || isDeleting) {
+    return (
+      <div
+        style={{
+          alignSelf: isSentByUser ? "flex-end" : "flex-start",
+          display: "flex",
+          flexDirection: "column",
+          marginBottom: "4px",
+          maxWidth: "90%",
+          position: "relative",
+          padding: "11px",
+          borderRadius: "4px",
+          backgroundColor: isSentByUser ? "rgb(37 53 46)" : "rgb(44 51 48)",
+        }}
+      >
+        <p style={styles.text}>
+          This message has been deleted.{" "}
+          {isSentByUser && (
+            <button
+              style={{
+                cursor: "pointer",
+              }}
+              onClick={() => handleDeleteMessage(message, false)}
+            >
+              Undo
+            </button>
+          )}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -27,20 +72,33 @@ const MessageRenderer = ({
         display: "flex",
         flexDirection: "column",
         marginBottom: "4px",
-        maxWidth: "90%", 
+        maxWidth: "90%",
+        position: "relative",
+        cursor: "pointer",
       }}
+      onMouseEnter={() => setShowContextMenu(true)}
+      onMouseLeave={() => setShowContextMenu(false)}
     >
       {isFirstOfGroup && (
-        <div style={{ display: "flex", gap: "4px", marginBottom: "1px", marginLeft: isSentByUser && 'auto' }}>
+        <div
+          style={{
+            display: "flex",
+            gap: "4px",
+            marginBottom: "1px",
+            marginLeft: isSentByUser ? "auto" : "0",
+          }}
+        >
           {isGroupChat && !isSentByUser && (
-            <p style={styles.senderName}>{message.senderName}</p>
+            <p style={styles.senderName}>{senderName}</p>
           )}
+
           <p style={styles.messageDate}>
-            {formatMessageDate(message.createdAt)}
-            {message.isEdited && ", Edited"}
+            {createdAt && formatMessageDate(createdAt)}
+            {isEdited && ", Edited"}
           </p>
         </div>
       )}
+
       <div
         style={{
           padding: "11px",
@@ -51,31 +109,64 @@ const MessageRenderer = ({
           overflowWrap: "break-word",
           whiteSpace: "pre-wrap",
           boxShadow: "0px 2px 4px rgba(0,0,0,0.4)",
-          maxWidth: "100%", // Ensure the message bubble doesn't exceed its container
+          maxWidth: "100%",
         }}
-        onClick={() => canEdit && handleEditMessage(message)}
       >
+        {repliedToMessage && (
+          <div style={styles.replySnippet}>
+            <p style={styles.replySnippetText}>
+              {repliedToMessage.text.slice(0, 50)}
+              {repliedToMessage.text.length > 50 ? "..." : ""}
+            </p>
+          </div>
+        )}
+
         {isEditing ? (
           <input
             type="text"
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             onBlur={handleUpdateMessage}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                handleUpdateMessage(e);
-              }
-            }}
+            onKeyDown={(e) => e.key === "Enter" && handleUpdateMessage(e)}
             autoFocus
             style={styles.inputBox}
           />
         ) : (
-          <p style={styles.text} title={canEdit ? "Edit" : null}>
-            {message.text}
-          </p>
+          <p style={styles.text}>{text}</p>
         )}
       </div>
-      {isGroupChat && isLastOfGroup && isSentByUser && seenBy && (
+
+      {showContextMenu && (
+        <div style={styles.contextMenu}>
+          <button
+            title="Reply"
+            onClick={() => handleReply(message)}
+            style={styles.contextButton}
+          >
+            <FaReply />
+          </button>
+          {canEdit && (
+            <button
+              title="Edit"
+              onClick={() => handleEditMessage(message)}
+              style={styles.contextButton}
+            >
+              <MdEdit />
+            </button>
+          )}
+          {isSentByUser && (
+            <button
+              title="Delete"
+              onClick={() => handleDeleteMessage(message, true)}
+              style={styles.contextButton}
+            >
+              <MdDelete />
+            </button>
+          )}
+        </div>
+      )}
+
+      {isGroupChat && isLastOfGroup && isSentByUser && seenBy?.length > 0 && (
         <div
           style={{
             display: "flex",
@@ -83,9 +174,10 @@ const MessageRenderer = ({
             marginTop: "5px",
           }}
         >
-          {seenBy.map((uid, idx) => {
-            const seenUser = users.find((u) => u.uid === uid);
-            return seenUser ? (
+          {seenBy
+            .map((uid) => users.find((u) => u.uid === uid))
+            .filter(Boolean) // Remove null values
+            .map((seenUser, idx) => (
               <img
                 key={idx}
                 src={seenUser.photoURL}
@@ -97,13 +189,13 @@ const MessageRenderer = ({
                   marginLeft: "4px",
                 }}
               />
-            ) : null;
-          })}
+            ))}
         </div>
       )}
-      {!isGroupChat && isLastMessage && isSentByUser && (
+
+      {!isGroupChat && isLastMessage && isSentByUser && !isEditing && (
         <div style={{ marginTop: "5px", marginLeft: "auto" }}>
-          {message.seen ? (
+          {seen ? (
             <FaEye style={styles.seen} />
           ) : (
             <FiSend style={styles.seen} />
@@ -128,6 +220,9 @@ const ChatMessages = ({
   editText,
   setEditText,
   handleUpdateMessage,
+  handleReply,
+  handleDeleteMessage,
+  isDeleting,
 }) => {
   const chatBoxRef = useRef(null);
   useScrollToBottom(chatBoxRef, messages);
@@ -161,6 +256,10 @@ const ChatMessages = ({
             isLastMessage={isLastMessage}
             canEdit={canEdit}
             handleUpdateMessage={handleUpdateMessage}
+            handleReply={handleReply}
+            messages={messages}
+            handleDeleteMessage={handleDeleteMessage}
+            isDeleting={isDeleting}
           />
         );
       })}
@@ -181,7 +280,7 @@ const styles = {
     display: "flex",
     flexDirection: "column",
     gap: "0px",
-    maxWidth:'67vw',
+    maxWidth: "67vw",
   },
   senderName: {
     marginBottom: "1px",
@@ -197,7 +296,7 @@ const styles = {
   text: {
     margin: 0,
     color: "#fff",
-    wordWrap: "break-word", // Ensure text inside <p> wraps
+    wordWrap: "break-word",
     overflowWrap: "break-word",
     whiteSpace: "pre-wrap",
   },
@@ -212,6 +311,39 @@ const styles = {
   seen: {
     fontSize: "13px",
     color: "#dfdfdf",
+  },
+  replySnippet: {
+    backgroundColor: "#1F1F1F",
+    padding: "7px",
+    borderRadius: "4px",
+    marginBottom: "4px",
+    border: "1px solid rgb(85, 85, 85)",
+    boxShadow: "0 0 2px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.28)",
+  },
+  replySnippetText: {
+    margin: 0,
+    fontSize: "12px",
+    color: "#ccc",
+  },
+  contextMenu: {
+    display: "flex",
+    gap: "2px",
+    position: "absolute",
+    backgroundColor: "#2A2A2A",
+    borderRadius: "4px",
+    padding: "5px",
+    zIndex: 10,
+    top: "-10px",
+    right: "0",
+  },
+  contextButton: {
+    background: "none",
+    border: "none",
+    color: "#fff",
+    padding: "5px",
+    cursor: "pointer",
+    width: "100%",
+    textAlign: "left",
   },
 };
 

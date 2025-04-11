@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { FaEllipsisV, FaUsers } from "react-icons/fa";
 import AddMembers from "./AddMembers";
 import ChangeGroupName from "./changeGroupName";
@@ -7,6 +7,21 @@ const GroupChatHeader = ({ selectedGroup, groupMembers }) => {
   const [menuVisible, setMenuVisible] = useState(false);
   const [showChangeGroupName, setShowChangeGroupName] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
+  const menuRef = useRef(null);
+
+  // Handle click outside to close the menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuVisible(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div style={styles.header}>
@@ -14,36 +29,37 @@ const GroupChatHeader = ({ selectedGroup, groupMembers }) => {
         <div style={styles.avatar}>
           <FaUsers size={22} color="#fff" />
         </div>
-        <h2 style={styles.username}>
-          {selectedGroup?.groupName}
-        </h2>
+        <h2 style={styles.username}>{selectedGroup?.groupName}</h2>
       </div>
-      <div style={styles.menuIcon} onClick={() => setMenuVisible(!menuVisible)}>
+      <div
+        style={styles.menuIcon}
+        onClick={() => setMenuVisible(!menuVisible)}
+        ref={menuRef}
+      >
         <FaEllipsisV size={20} color="#fff" />
+        {menuVisible && (
+          <div style={styles.menuDropdown}>
+            <div
+              style={styles.menuItem}
+              onClick={() => {
+                setShowChangeGroupName(true);
+                setMenuVisible(false);
+              }}
+            >
+              Change Group Name
+            </div>
+            <div
+              style={styles.menuItem}
+              onClick={() => {
+                setShowAddMembers(true);
+                setMenuVisible(false);
+              }}
+            >
+              Add New Members
+            </div>
+          </div>
+        )}
       </div>
-
-      {menuVisible && (
-        <div style={styles.menuDropdown}>
-          <div
-            style={styles.menuItem}
-            onClick={() => {
-              setShowChangeGroupName(true);
-              setMenuVisible(false);
-            }}
-          >
-            Change Group Name
-          </div>
-          <div
-            style={styles.menuItem}
-            onClick={() => {
-              setShowAddMembers(true);
-              setMenuVisible(false);
-            }}
-          >
-            Add New Members
-          </div>
-        </div>
-      )}
 
       {showChangeGroupName && (
         <ChangeGroupName
@@ -72,7 +88,7 @@ const styles = {
     top: 0,
     zIndex: 10,
     padding: "11px",
-    backgroundColor: "#141414",
+    backgroundColor: "rgb(28 28 28)",
   },
   subheader: {
     display: "flex",
@@ -90,7 +106,8 @@ const styles = {
     cursor: "pointer",
   },
   username: {
-    fontSize: "14px", fontWeight: "500" 
+    fontSize: "14px",
+    fontWeight: "500",
   },
   menuIcon: {
     cursor: "pointer",
@@ -103,7 +120,6 @@ const styles = {
     borderRadius: "5px",
     boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
     zIndex: 1000,
-    width: "180px",
     padding: "5px 0",
   },
   menuItem: {
@@ -112,7 +128,6 @@ const styles = {
     cursor: "pointer",
     transition: "background 0.3s",
     fontSize: "13px",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
   },
   menuItemLast: {
     borderBottom: "none",
