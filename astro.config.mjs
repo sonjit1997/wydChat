@@ -6,6 +6,7 @@ export default defineConfig({
   image: {
     domains: ['lh3.googleusercontent.com'],
   },
+  output: "server",
   
 });
  

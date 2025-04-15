@@ -23,7 +23,7 @@ import ChatMessages from "./ChatMessages";
 import GroupChatHeader from "./GroupChatHeader";
 import InputBox from "./InputBox";
 import useDeleteUserMessage from "../hooks/useDeleteUserMessage";
-
+import useSendFile from "../hooks/useSendFileToGoogleDrive";
 
 const GroupChat = ({ socket }) => {
   const {
@@ -35,6 +35,7 @@ const GroupChat = ({ socket }) => {
   } = useAuthStore();
   const [users, setUsers] = useState([]);
   const [groupMessages, setGroupMessages] = useState([]);
+  const [clearFileInput, setClearFileInput] = useState(false);
   const [text, setText] = useState("");
   const { formatMessageDate } = useFormattedMessageDate();
   const groupedMessages = useGroupedMessages(groupMessages);
@@ -47,7 +48,10 @@ const GroupChat = ({ socket }) => {
     handleUpdateMessage,
   } = useEditGroupMessage(groupKey);
 
-  const { handleDeleteMessage, isDeleting } = useDeleteUserMessage('groupMessages');
+  const { handleDeleteMessage, isDeleting } =
+    useDeleteUserMessage("groupMessages");
+
+  const { file, setFile, sendFile, loading } = useSendFile();
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -98,7 +102,7 @@ const GroupChat = ({ socket }) => {
           return {
             id: docSnapshot.id,
             ...messageData,
-            text: decryptedText,
+            message: decryptedText,
           };
         })
       );
@@ -110,47 +114,72 @@ const GroupChat = ({ socket }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (text.trim() === "" || !groupKey) return;
-
-    const encryptedText = encryptGroupMessage(text, groupKey);
+    if (!groupKey) return;
 
     try {
-      await addDoc(collection(db, "groupMessages"), {
-        text: encryptedText,
-        senderId: logedInUser.uid,
-        senderName: logedInUser.displayName,
-        groupId: selectedUserOrGroup.groupId,
-        createdAt: new Date(),
-        seenBy: [],
-        isEdited: false,
-        isDeleted: false,
-        replyTo: replyingTo ? replyingTo.id : null,
-      });
+      if (text) {
+        const encryptedText = encryptGroupMessage(text, groupKey);
+
+        await addDoc(collection(db, "groupMessages"), {
+          text: encryptedText,
+          senderId: logedInUser.uid,
+          senderName: logedInUser.displayName,
+          groupId: selectedUserOrGroup.groupId,
+          createdAt: new Date(),
+          seenBy: [],
+          isEdited: false,
+          isDeleted: false,
+          replyTo: replyingTo ? replyingTo.id : null,
+          messageType: "text",
+        });
+      }
+
+      if (file) {
+        const fileLink = await sendFile();
+        if (fileLink) {
+          const encryptedText = encryptGroupMessage(fileLink, groupKey);
+          await addDoc(collection(db, "groupMessages"), {
+            text: encryptedText,
+            senderId: logedInUser.uid,
+            senderName: logedInUser.displayName,
+            groupId: selectedUserOrGroup.groupId,
+            createdAt: new Date(),
+            seenBy: [],
+            isEdited: false,
+            isDeleted: false,
+            replyTo: replyingTo ? replyingTo.id : null,
+            messageType: "file",
+            fileName: file.name,
+          });
+        }
+      }
 
       await setDoc(
         doc(db, "lastConversations", selectedUserOrGroup.groupId),
         {
           lastMessageAt: serverTimestamp(),
-          lastMessage: text,
+          lastMessage: text ? text : "File",
           participants: [...selectedUserOrGroup.memberIds],
         },
         { merge: true }
       );
 
-      const senderName = logedInUser.displayName.split(" ")[0];
-      const members = selectedUserOrGroup.memberIds;
+      // need to update
+      // const senderName = logedInUser.displayName.split(" ")[0];
+      // const members = selectedUserOrGroup.memberIds;
 
-      socket.emit("sendGroupMessage", {
-        sender: logedInUser.uid,
-        senderName,
-        groupName: selectedUserOrGroup.groupName,
-        members,
-        message: text,
-      });
+      // socket.emit("sendGroupMessage", {
+      //   sender: logedInUser.uid,
+      //   senderName,
+      //   groupName: selectedUserOrGroup.groupName,
+      //   members,
+      //   message: text,
+      // });
 
       setText("");
       setReplyingTo(null); // Clear reply state after sending
       setIsUpdateLastConversation(!isUpdateLastConversation);
+      setClearFileInput(!clearFileInput);
     } catch (error) {
       console.error("Error sending message: ", error);
     }
@@ -188,7 +217,7 @@ const GroupChat = ({ socket }) => {
     }, 1500);
   };
 
-  const [replyingTo, setReplyingTo] = useState(null); 
+  const [replyingTo, setReplyingTo] = useState(null);
 
   const handleReply = (message) => {
     setReplyingTo(message); // Set the message to reply to
@@ -233,6 +262,9 @@ const GroupChat = ({ socket }) => {
         handleTyping={handleTyping}
         replyingTo={replyingTo}
         cancelReply={cancelReply}
+        setFile={setFile}
+        file={file}
+        clearFileInput={clearFileInput}
       />
     </div>
   );

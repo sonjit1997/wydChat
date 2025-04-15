@@ -5,7 +5,7 @@ import { MdDelete, MdEdit } from "react-icons/md";
 import { FiSend } from "react-icons/fi";
 
 const MessageRenderer = ({
-  message,
+  messageObject,
   isSentByUser,
   isFirstOfGroup,
   isLastOfGroup,
@@ -26,13 +26,22 @@ const MessageRenderer = ({
   isDeleting,
 }) => {
   const [showContextMenu, setShowContextMenu] = useState(false);
-  const { text, replyTo, isDeleted, createdAt, isEdited, senderName, seen } =
-    message;
+  const {
+    message,
+    replyTo,
+    isDeleted,
+    createdAt,
+    isEdited,
+    senderName,
+    seen,
+    messageType,
+    fileName,
+  } = messageObject;
+
   const repliedToMessage = replyTo
     ? messages.find((msg) => msg.id === replyTo)
     : null;
 
-  // Early return if message is deleted
   if (isDeleted || isDeleting) {
     return (
       <div
@@ -48,14 +57,20 @@ const MessageRenderer = ({
           backgroundColor: isSentByUser ? "rgb(37 53 46)" : "rgb(44 51 48)",
         }}
       >
-        <p style={styles.text}>
+        <p style={styles.deletText}>
           This message has been deleted.{" "}
           {isSentByUser && (
             <button
               style={{
                 cursor: "pointer",
+                backgroundColor: "#1F6F4C",
+                border: "none",
+                color: "#fff",
+                fontWeight:'600',
+                borderRadius:"2px",
+              
               }}
-              onClick={() => handleDeleteMessage(message, false)}
+              onClick={() => handleDeleteMessage(messageObject, false)}
             >
               Undo
             </button>
@@ -101,22 +116,26 @@ const MessageRenderer = ({
 
       <div
         style={{
-          padding: "11px",
-          borderRadius: "4px",
-          backgroundColor: isSentByUser ? "rgb(37 53 46)" : "rgb(44 51 48)",
+          padding: messageType === "file" ? "0px" : "11px",
+          borderRadius: messageType === "file" ? "0px" : "4px",
+          backgroundColor:
+            messageType === "file"
+              ? ""
+              : isSentByUser
+              ? "rgb(37 53 46)"
+              : "rgb(44 51 48)",
           cursor: canEdit ? "pointer" : "default",
           wordWrap: "break-word",
           overflowWrap: "break-word",
           whiteSpace: "pre-wrap",
-          boxShadow: "0px 2px 4px rgba(0,0,0,0.4)",
           maxWidth: "100%",
         }}
       >
         {repliedToMessage && (
           <div style={styles.replySnippet}>
             <p style={styles.replySnippetText}>
-              {repliedToMessage.text.slice(0, 50)}
-              {repliedToMessage.text.length > 50 ? "..." : ""}
+              {repliedToMessage.message.slice(0, 50)}
+              {repliedToMessage.message.length > 50 ? "..." : ""}
             </p>
           </div>
         )}
@@ -131,8 +150,32 @@ const MessageRenderer = ({
             autoFocus
             style={styles.inputBox}
           />
+        ) : messageType === "text" ? (
+          <p style={styles.text}>{message}</p>
+        ) : messageType === "file" ? (
+          fileName && fileName.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+            <img
+              src={message}
+              alt={fileName}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "200px",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            />
+          ) : (
+            <a
+              href={message}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={styles.fileLink}
+            >
+              {fileName || "File"} (Click to download)
+            </a>
+          )
         ) : (
-          <p style={styles.text}>{text}</p>
+          <p style={styles.text}>{message}</p>
         )}
       </div>
 
@@ -140,7 +183,7 @@ const MessageRenderer = ({
         <div style={styles.contextMenu}>
           <button
             title="Reply"
-            onClick={() => handleReply(message)}
+            onClick={() => handleReply(messageObject)}
             style={styles.contextButton}
           >
             <FaReply />
@@ -148,7 +191,7 @@ const MessageRenderer = ({
           {canEdit && (
             <button
               title="Edit"
-              onClick={() => handleEditMessage(message)}
+              onClick={() => handleEditMessage(messageObject)}
               style={styles.contextButton}
             >
               <MdEdit />
@@ -157,7 +200,7 @@ const MessageRenderer = ({
           {isSentByUser && (
             <button
               title="Delete"
-              onClick={() => handleDeleteMessage(message, true)}
+              onClick={() => handleDeleteMessage(messageObject, true)}
               style={styles.contextButton}
             >
               <MdDelete />
@@ -233,15 +276,16 @@ const ChatMessages = ({
         const isSentByUser = message.senderId === logedInUser.uid;
         const isLastMessage = !isGroupChat && index === messages.length - 1;
         const canEdit = isGroupChat
-          ? message.seenBy
-            ? message.seenBy.length === 0 && isSentByUser
-            : true
-          : !message.seen;
+          ? message.messageType === "text" &&
+            (message.seenBy
+              ? message.seenBy.length === 0 && isSentByUser
+              : true)
+          : message.messageType === "text" && !message.seen;
 
         return (
           <MessageRenderer
             key={message.id}
-            message={message}
+            messageObject={message}
             isSentByUser={isSentByUser}
             isFirstOfGroup={message.isFirstOfGroup}
             isLastOfGroup={message.isLastOfGroup}
@@ -300,6 +344,11 @@ const styles = {
     overflowWrap: "break-word",
     whiteSpace: "pre-wrap",
   },
+  deletText: {
+    margin: 0,
+    color: "rgb(39 159 107)",
+    fontStyle:'italic'
+  },
   inputBox: {
     width: "100%",
     fontSize: "14px",
@@ -344,6 +393,12 @@ const styles = {
     cursor: "pointer",
     width: "100%",
     textAlign: "left",
+  },
+  fileLink: {
+    color: "#1E90FF",
+    textDecoration: "underline",
+    cursor: "pointer",
+    fontSize: "14px",
   },
 };
 

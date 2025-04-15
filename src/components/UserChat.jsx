@@ -17,6 +17,7 @@ import useDeleteUserMessage from "../hooks/useDeleteUserMessage";
 import useEditUserMessage from "../hooks/useEditUserMessage";
 import useFormattedMessageDate from "../hooks/useFormattedMessageDate";
 import useGroupedMessages from "../hooks/useGroupedMessages";
+import useSendFile from "../hooks/useSendFileToGoogleDrive";
 import { useAuthStore } from "../store/useAuthStore";
 import { decryptMessage, encryptMessage } from "../utils/cryptoUtils";
 import { getPrivateKey } from "../utils/indexedDBUtils";
@@ -25,6 +26,7 @@ import InputBox from "./InputBox";
 
 const UserChat = ({ socket }) => {
   const [messages, setMessages] = useState([]);
+  const [clearFileInput, setClearFileInput] = useState(false);
   const [text, setText] = useState("");
   const [replyingTo, setReplyingTo] = useState(null); // Track the message being replied to
   const { formatMessageDate } = useFormattedMessageDate();
@@ -35,6 +37,7 @@ const UserChat = ({ socket }) => {
     logedInUser,
     isUpdateLastConversation,
   } = useAuthStore();
+
   const {
     editText,
     setEditText,
@@ -44,6 +47,8 @@ const UserChat = ({ socket }) => {
   } = useEditUserMessage(selectedUserOrGroup, logedInUser);
 
   const { handleDeleteMessage, isDeleting } = useDeleteUserMessage("messages");
+
+  const { file, setFile, sendFile, loading } = useSendFile();
 
   useEffect(() => {
     if (selectedUserOrGroup) {
@@ -70,10 +75,10 @@ const UserChat = ({ socket }) => {
                 ? msg.encryptedTextForSender
                 : msg.encryptedTextForRecipient;
             if (!encryptedText) throw new Error("Encrypted text not found!");
-            msg.text = decryptMessage(encryptedText, privateKey);
+            msg.message = decryptMessage(encryptedText, privateKey);
           } catch (error) {
             console.error("Decryption error:", error);
-            msg.text = "🔒 Encrypted Message (Decryption Failed)";
+            msg.message = "🔒 Encrypted Message (Decryption Failed)";
           }
           decryptedMessages.push(msg);
         }
@@ -99,7 +104,8 @@ const UserChat = ({ socket }) => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (text.trim() === "") return;
+
+    // if (text.trim() === "" ) return;
 
     try {
       const recipientPublicKey = await getUserPublicKey(
@@ -111,24 +117,59 @@ const UserChat = ({ socket }) => {
         return;
       }
 
-      const encryptedTextForRecipient = encryptMessage(
-        text,
-        recipientPublicKey
-      );
-      const encryptedTextForSender = encryptMessage(text, senderPublicKey);
+      if (text) {
+        const encryptedTextForRecipient = encryptMessage(
+          text,
+          recipientPublicKey
+        );
+        const encryptedTextForSender = encryptMessage(text, senderPublicKey);
 
-      await addDoc(collection(db, "messages"), {
-        encryptedTextForRecipient,
-        encryptedTextForSender,
-        createdAt: serverTimestamp(),
-        sender: logedInUser.displayName,
-        senderId: logedInUser.uid,
-        recipientId: selectedUserOrGroup.uid,
-        seen: false,
-        isEdited: false,
-        isDeleted: false,
-        replyTo: replyingTo ? replyingTo.id : null,
-      });
+        await addDoc(collection(db, "messages"), {
+          encryptedTextForRecipient,
+          encryptedTextForSender,
+          createdAt: serverTimestamp(),
+          sender: logedInUser.displayName,
+          senderId: logedInUser.uid,
+          recipientId: selectedUserOrGroup.uid,
+          seen: false,
+          isEdited: false,
+          isDeleted: false,
+          replyTo: replyingTo ? replyingTo.id : null,
+          fileLink: null,
+          messageType: "text",
+        });
+      }
+
+      if (file) {
+         const fileLink = await sendFile();
+       
+        
+        if (fileLink) {
+          const encryptedTextForRecipient = encryptMessage(
+            fileLink,
+            recipientPublicKey
+          );
+
+          const encryptedTextForSender = encryptMessage(
+            fileLink,
+            senderPublicKey
+          );
+          await addDoc(collection(db, "messages"), {
+            encryptedTextForRecipient,
+            encryptedTextForSender,
+            createdAt: serverTimestamp(),
+            sender: logedInUser.displayName,
+            senderId: logedInUser.uid,
+            recipientId: selectedUserOrGroup.uid,
+            seen: false,
+            isEdited: false,
+            isDeleted: false,
+            replyTo: replyingTo ? replyingTo.id : null,
+            messageType: "file",
+            fileName: file.name,
+          });
+        }
+      }
 
       const conversationId = [logedInUser.uid, selectedUserOrGroup.uid]
         .sort()
@@ -137,22 +178,24 @@ const UserChat = ({ socket }) => {
         doc(db, "lastConversations", conversationId),
         {
           lastMessageAt: serverTimestamp(),
-          lastMessage: text,
+          lastMessage: text ? text : "File",
           participants: [logedInUser.uid, selectedUserOrGroup.uid],
         },
         { merge: true }
       );
 
-      socket.emit("sendMessage", {
-        sender: logedInUser.uid,
-        receiver: selectedUserOrGroup.uid,
-        senderName: logedInUser.displayName,
-        message: encryptedTextForRecipient,
-      });
+      //  need to update
+      // socket.emit("sendMessage", {
+      //   sender: logedInUser.uid,
+      //   receiver: selectedUserOrGroup.uid,
+      //   senderName: logedInUser.displayName,
+      //   message: encryptedTextForRecipient,
+      // });
 
       setText("");
       setReplyingTo(null); // Clear reply state after sending
       setIsUpdateLastConversation(!isUpdateLastConversation);
+      setClearFileInput(!clearFileInput);
     } catch (error) {
       console.error("Error encrypting message:", error);
     }
@@ -238,6 +281,9 @@ const UserChat = ({ socket }) => {
           handleTyping={handleTyping}
           replyingTo={replyingTo}
           cancelReply={cancelReply}
+          setFile={setFile}
+          file={file}
+          clearFileInput={clearFileInput}
         />
       </div>
     </div>

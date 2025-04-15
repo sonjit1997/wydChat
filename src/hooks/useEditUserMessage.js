@@ -10,8 +10,8 @@ const useEditeUserMessage = (selectedUser, user) => {
 
   const handleEditMessage = (message) => {
     setEditingMessageId(message.id);
-    setEditText(message.text);
-    setBeforeEditText(message.text);
+    setEditText(message.message);
+    setBeforeEditText(message.message);
   };
 
   const handleUpdateMessage = async (e) => {
