@@ -14,9 +14,10 @@ export const useAuthStore = create(
       setAllUser: (allUser) => set({ allUser }),
       setLogedInUser: (logedInUser) => set({ logedInUser }),
       setSelectedUserOrGroup: (selectedUserOrGroup) =>
-      set({ selectedUserOrGroup }),
+        set({ selectedUserOrGroup }),
       setIsGroupChanged: (status) => set({ isGroupChanged: status }), // ✅ New setter
-      setIsUpdateLastConversation: (status) => set({ isUpdateLastConversation: status }), // ✅ New setter
+      setIsUpdateLastConversation: (status) =>
+        set({ isUpdateLastConversation: status }), // ✅ New setter
 
       logout: () => {
         set({
@@ -27,7 +28,7 @@ export const useAuthStore = create(
         });
         // localStorage.removeItem("auth-store"); // Clear persisted data
       },
-    }),
+    })
     // {
     //   name: "auth-store", // Name for localStorage key
     //   partialize: (state) => ({

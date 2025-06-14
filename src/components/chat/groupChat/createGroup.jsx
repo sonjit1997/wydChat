@@ -1,7 +1,7 @@
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-import { useState } from "react";
 import { db } from "@/firebase";
 import { encryptWithPublicKey, generateAESKey } from "@/utils/cryptoUtils";
+import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { useState } from "react";
 
 const CreateGroup = ({
   usersList,
@@ -59,7 +59,7 @@ const CreateGroup = ({
         memberIds: members.map((m) => m.uid), // Store only UID array
         encryptedKeys, // Now an array of objects
         createdAt: serverTimestamp(),
-        groupKey:groupKey
+        groupKey: groupKey,
       });
 
       setGroupName("");

@@ -1,4 +1,4 @@
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc } from "firebase/firestore";
 import { useState } from "react";
 import { db } from "../firebase";
 import { encryptGroupMessage } from "../utils/cryptoUtils";
@@ -38,11 +38,6 @@ const useEditeGroupMessage = (groupKey) => {
     } catch (error) {
       console.error("Error updating message:", error);
     }
-  };
-
-  const getUserPublicKey = async (userId) => {
-    const userDoc = await getDoc(doc(db, "users", userId));
-    return userDoc.exists() ? userDoc.data().publicKey : null;
   };
 
   return {

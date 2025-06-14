@@ -1,41 +1,61 @@
-
-@import url('https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Nunito:ital,wght@0,200..1000;1,200..1000&family=Open+Sans:ital,wght@0,300..800;1,300..800&family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
 body {
-    font-family: "Roboto", sans-serif;
-    font-optical-sizing: auto;
-    font-style: normal;
-    font-variation-settings:
-      "wdth" 100;
+  font-family: "Roboto", sans-serif;
+  font-optical-sizing: auto;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
 }
 
-
 ::-webkit-scrollbar {
-    width: 14px; /* Scrollbar width */
+  width: 14px; /* Scrollbar width */
 }
 
 ::-webkit-scrollbar-track {
-    background: #3f3f3f; /* Track color */
-    border-radius: 20px;
+  background: #1f6f4c; /* Track color */
+  border-radius: 20px;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #3f3f3f; /* Thumb color */
-    border-radius: 20px;
-    transition: 0.3s ease;
+  background: #1f6f4c; /* Thumb color */
+  border-radius: 20px;
+  transition: 0.3s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #3f3f3f; /* Darker color on hover */
+  background: #1f6f4c; /* Darker color on hover */
 }
 
 /* Firefox Scrollbar */
 * {
-    scrollbar-width: thin; /* Thin scrollbar */
-    scrollbar-color: #3f3f3f transparent; /* Thumb & Track color */
+  scrollbar-width: thin; /* Thin scrollbar */
+  scrollbar-color: #1f6f4c transparent; /* Thumb & Track color */
 }
 
-.tiptap:focus {
-    outline: none !important;
-  }
-  
-  
+/* Menu container */
+.menu-icon {
+  cursor: pointer;
+  background: transparent;
+  border: none;
+}
+
+.szh-menu {
+  background-color: #333333 !important;
+  color: #fff !important;
+  border-radius: 6px;
+
+  margin: 0;
+  padding: 4px 0;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+}
+
+/* Menu item */
+.szh-menu__item {
+  font-size: 14px;
+  padding: 10px 14px;
+  transition: background-color 0.3s ease;
+}
+
+/* Hover effect */
+.szh-menu__item--hover {
+  background-color: #3d3d3d !important;
+}

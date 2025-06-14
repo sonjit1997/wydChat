@@ -1,8 +1,8 @@
-import { arrayUnion, doc, updateDoc } from "firebase/firestore";
-import { useState } from "react";
 import { db } from "@/firebase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { encryptWithPublicKey } from "@/utils/cryptoUtils";
+import { arrayUnion, doc, updateDoc } from "firebase/firestore";
+import { useState } from "react";
 
 const AddMembers = ({ selectedGroup, onClose }) => {
   const { allUser, logedInUser, setIsGroupChanged, isGroupChanged } =
@@ -13,8 +13,6 @@ const AddMembers = ({ selectedGroup, onClose }) => {
   const isUserInGroup = (uid) => selectedGroup.memberIds.includes(uid);
 
   const handleAddMember = async (newMember) => {
-
-
     if (!newMember || !newMember.uid || !newMember.publicKey) {
       alert("Invalid member selection.");
       return;
@@ -50,12 +48,13 @@ const AddMembers = ({ selectedGroup, onClose }) => {
   };
 
   const handleRemoveMember = async (userId) => {
- 
     try {
-      const groupRef = doc(db, "groups",  selectedGroup.groupId);
+      const groupRef = doc(db, "groups", selectedGroup.groupId);
 
       // Filter out the user from `memberIds`
-      const updatedMembers = selectedGroup.memberIds.filter((id) => id !== userId);
+      const updatedMembers = selectedGroup.memberIds.filter(
+        (id) => id !== userId
+      );
 
       // Filter out the user from `encryptedKeys`
       const updatedEncryptedKeys = selectedGroup.encryptedKeys.filter(

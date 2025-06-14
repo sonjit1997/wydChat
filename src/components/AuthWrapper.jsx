@@ -1,32 +1,34 @@
-import { signOut } from "firebase/auth";
-import { useEffect, useState } from "react";
-import { NotificationProvider } from "../context/NotificationContext";
-import { auth } from "../firebase";
-import { useAuthStore } from "../store/useAuthStore";
+import { NotificationProvider } from "@/context/NotificationContext.jsx";
+import { useAuthStore } from "@/store/useAuthStore.js";
 import {
   decryptPrivateKey,
   encryptPrivateKey,
   generateKeyPair,
-} from "../utils/cryptoUtils";
+} from "@/utils/cryptoUtils.js";
 import {
   getEncryptedPrivateKey,
   saveEncryptedPrivateKey,
   savePublicKeyToFirestore,
-} from "../utils/firestoreUtils";
+} from "@/utils/firestoreUtils.js";
 import {
   deletePrivateKey,
   getPrivateKey,
   savePrivateKey,
-} from "../utils/indexedDBUtils";
-import { useSocket } from "../utils/socketUtil.js";
-import NotificationPanel from "./NotificationPanel.jsx";
-import PassphraseModal from "./PassphraseModal.jsx";
-import SignIn from "./SignIn.jsx";
-import ChatLayout from "./ChatLayout";
+} from "@/utils/indexedDBUtils.js";
+import { useSocket } from "@/utils/socketUtil.js";
+import { signOut } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
+import { useEffect, useState } from "react";
+import { db } from "../firebase";
+import { auth } from "../firebase.js";
+import ChatLayout from "./chat/chatLayout.jsx";
+import NotificationPanel from "./notificationPanel.jsx";
+import PassphraseModal from "./passphraseModal.jsx";
+import SignIn from "./signIn.jsx";
 export default function AuthWrapper() {
   const socket = useSocket();
   const [user, setUser] = useState(null);
-  const { setLogedInUser ,logedInUser,logout} = useAuthStore();
+  const { setLogedInUser, logedInUser, logout } = useAuthStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState("");
   const [pendingEncryptedKey, setPendingEncryptedKey] = useState(null);
@@ -61,9 +63,21 @@ export default function AuthWrapper() {
 
   // ✅ Update Zustand state only when `user` changes to prevent infinite loop
   useEffect(() => {
-    if (user) {
-      setLogedInUser(user);
-    }
+    const fetchData = async () => {
+      if (user) {
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+
+        const finalData = {
+          ...user,
+          storeData: userSnap.exists() ? userSnap.data() : {},
+        };
+
+        setLogedInUser(finalData);
+      }
+    };
+
+    fetchData();
   }, [user]);
 
   const handlePassphraseSubmit = async (passphrase) => {
@@ -113,7 +127,7 @@ export default function AuthWrapper() {
         onSubmit={handlePassphraseSubmit}
       />
       <NotificationProvider socket={socket}>
-        <NotificationPanel user={user} />
+        <NotificationPanel />
         <ChatLayout
           manuallyLogout={manuallyLogout}
           currentUser={user}

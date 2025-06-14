@@ -1,6 +1,6 @@
 import React from "react";
 
-const ChatPlaceholder = () => {
+const ChatPlaceholder = ({ logedInUser }) => {
   return (
     <div style={styles.container}>
       <img src="/Wechat.gif" alt="Chat Animation" style={styles.gif} />

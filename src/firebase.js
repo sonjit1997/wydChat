@@ -1,7 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-import { getAuth, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-
+import { getAuth, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
+import { doc, getDoc, getFirestore, setDoc } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: import.meta.env.PUBLIC_FIREBASE_API_KEY,
@@ -35,6 +34,7 @@ export const signInUser = async () => {
         username: user.displayName,
         email: user.email,
         photoURL: user.photoURL,
+        bio: "I am available :)",
         createdAt: new Date(),
       });
     }

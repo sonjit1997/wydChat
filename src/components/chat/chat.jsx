@@ -1,8 +1,8 @@
 import { useAuthStore } from "@/store/useAuthStore";
-import GroupChat from "./groupChat/groupChat";
 import UserChat from "./directChat/directChat";
-const Chat = ({socket}) => {
-  const {selectedUserOrGroup } = useAuthStore();
+import GroupChat from "./groupChat/groupChat";
+const Chat = ({ socket }) => {
+  const { selectedUserOrGroup } = useAuthStore();
 
   return (
     <>

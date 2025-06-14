@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-const PassphraseModal = ({ isOpen, title, onSubmit, onClose }) => {
+const PassphraseModal = ({ isOpen, title, onSubmit }) => {
   const [digits, setDigits] = useState(["", "", "", "", "", ""]);
   const inputsRef = useRef([]);
 

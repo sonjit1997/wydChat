@@ -1,26 +1,29 @@
-import { doc, updateDoc } from "firebase/firestore";
-import { useState } from "react";
+import LoadingSpinner from "@/components/loadingSpinner";
 import { db } from "@/firebase";
 import { useAuthStore } from "@/store/useAuthStore";
+import { doc, updateDoc } from "firebase/firestore";
+import { useState } from "react";
 const ChangeGroupName = ({ selectedGroup, onClose }) => {
   const [newGroupName, setNewGroupName] = useState(selectedGroup.groupName);
   const { setIsGroupChanged, isGroupChanged } = useAuthStore();
-  const [nameLoading, setNameLoading] = useState(false);
+  const [isLoading, setisloading] = useState(false);
 
   const handleUpdateGroupName = async () => {
+    setisloading(true);
     if (newGroupName.trim() === selectedGroup.newGroupName) return;
-
-    setNameLoading(true);
     try {
       await updateDoc(doc(db, "groups", selectedGroup.groupId), {
         groupName: newGroupName,
       });
-
+      setisloading(false);
       onClose();
       setIsGroupChanged(!isGroupChanged);
     } catch (error) {
       console.error("Error updating group name:", error);
       alert("Failed to update group name");
+      setisloading(false);
+
+      onClose();
     }
   };
 
@@ -36,7 +39,7 @@ const ChangeGroupName = ({ selectedGroup, onClose }) => {
         />
         <div style={styles.buttonContainer}>
           <button onClick={handleUpdateGroupName} style={styles.button}>
-            Save
+            {isLoading ? <LoadingSpinner /> : "Save"}
           </button>
           <button onClick={onClose} style={styles.cancelButton}>
             Cancel

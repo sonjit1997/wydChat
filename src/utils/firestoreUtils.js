@@ -1,5 +1,5 @@
+import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db } from "../firebase";
-import { setDoc, doc, getDoc } from "firebase/firestore";
 
 /**
  * Save user's public key to Firestore

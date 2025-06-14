@@ -1,27 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { Menu, MenuButton, MenuItem } from "@szhsin/react-menu";
+import { useState } from "react";
 import { FaEllipsisV, FaUsers } from "react-icons/fa";
 import AddMembers from "./addMembers";
 import ChangeGroupName from "./changeGroupName";
 
 const GroupChatHeader = ({ selectedGroup, groupMembers }) => {
-  const [menuVisible, setMenuVisible] = useState(false);
   const [showChangeGroupName, setShowChangeGroupName] = useState(false);
   const [showAddMembers, setShowAddMembers] = useState(false);
-  const menuRef = useRef(null);
-
-  // Handle click outside to close the menu
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setMenuVisible(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
 
   return (
     <div style={styles.header}>
@@ -31,35 +16,19 @@ const GroupChatHeader = ({ selectedGroup, groupMembers }) => {
         </div>
         <h2 style={styles.username}>{selectedGroup?.groupName}</h2>
       </div>
-      <div
-        style={styles.menuIcon}
-        onClick={() => setMenuVisible(!menuVisible)}
-        ref={menuRef}
+
+      <Menu
+        menuButton={<MenuButton className='menu-icon'><FaEllipsisV size={20} color="#fff" /></MenuButton>}
+        transition
+        theming="dark"
       >
-        <FaEllipsisV size={20} color="#fff" />
-        {menuVisible && (
-          <div style={styles.menuDropdown}>
-            <div
-              style={styles.menuItem}
-              onClick={() => {
-                setShowChangeGroupName(true);
-                setMenuVisible(false);
-              }}
-            >
-              Change Group Name
-            </div>
-            <div
-              style={styles.menuItem}
-              onClick={() => {
-                setShowAddMembers(true);
-                setMenuVisible(false);
-              }}
-            >
-              Add New Members
-            </div>
-          </div>
-        )}
-      </div>
+        <MenuItem onClick={() => setShowChangeGroupName(true)}>
+          Change Group Name
+        </MenuItem>
+        <MenuItem onClick={() => setShowAddMembers(true)}>
+          Add New Members
+        </MenuItem>
+      </Menu>
 
       {showChangeGroupName && (
         <ChangeGroupName
@@ -78,7 +47,6 @@ const GroupChatHeader = ({ selectedGroup, groupMembers }) => {
     </div>
   );
 };
-
 const styles = {
   header: {
     display: "flex",
@@ -109,29 +77,7 @@ const styles = {
     fontSize: "14px",
     fontWeight: "500",
   },
-  menuIcon: {
-    cursor: "pointer",
-  },
-  menuDropdown: {
-    position: "absolute",
-    top: "60px",
-    right: "10px",
-    backgroundColor: "#333",
-    borderRadius: "5px",
-    boxShadow: "0px 4px 6px rgba(0, 0, 0, 0.2)",
-    zIndex: 1000,
-    padding: "5px 0",
-  },
-  menuItem: {
-    padding: "10px 14px",
-    color: "#fff",
-    cursor: "pointer",
-    transition: "background 0.3s",
-    fontSize: "13px",
-  },
-  menuItemLast: {
-    borderBottom: "none",
-  },
 };
 
 export default GroupChatHeader;
+

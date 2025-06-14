@@ -1,49 +1,51 @@
-import OpenAI from 'openai';
+import { useEffect, useState } from "react";
 
+function useSmartReplies(message) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+console.log(message);
 
-const openai = new OpenAI({
-    apiKey: 'YOUR_API_KEY',
-    dangerouslyAllowBrowser: true // Required for browser use (bypasses safety checks)
-});
-
-
-
-const useSmartReplies= async (message) => {
-    const prompt = `Based on this message: '${message}', suggest 3 short reply options (each under 10 words).`;
-    try {
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-                { role: 'system', content: 'You are a concise, helpful assistant.' },
-                { role: 'user', content: prompt }
-            ],
-            max_tokens: 50,
-            temperature: 0.5
-        });
-        const replies = completion.choices[0].message.content.split('\n');
-        return replies;
-    } catch (error) {
-        console.error('Error fetching smart replies:', error);
-        return ['Oops, something went wrong!'];
+  useEffect(() => {
+    if (!message) {
+      setSuggestions([]);
+      setIsLoading(false);
+      setError(null);
+      return;
     }
+
+    setIsLoading(true);
+    setError(null);
+    fetch("/api/smart-reply-v2", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        if (data && Array.isArray(data.suggestions)) {
+          setSuggestions(data.suggestions);
+        } else {
+          setError("Invalid response format from Gemini.");
+        }
+      })
+      .catch((err) => {
+        setError("Failed to fetch suggestions from Gemini.");
+        console.error("Error fetching Gemini suggestions:", err);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
+  }, [message]);
+
+  return { suggestions, isLoading, error };
 }
 
 export default useSmartReplies;
-
-
-
-
-// const [smartReply,setSmartReply]=useState(null);
-// useEffect(() => {
-//   if (groupedMessages.length) {
-//     const lastMessage = groupedMessages[groupedMessages.length - 1];
-//     const recivedMessage = lastMessage.senderId !== logedInUser.uid;
-
-//     if(recivedMessage){
-//       const smartReplyData=useSmartReplies(recivedMessage)
-//       console.log(smartReplyData);
-
-//       setSmartReply(smartReplyData);
-//     }
-//   }
-// }, [groupedMessages, logedInUser]);

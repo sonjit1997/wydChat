@@ -1,150 +1,28 @@
-import { collection, getDocs, query, where } from "firebase/firestore";
+import useFormattedMessageDateNew from "@/hooks/useFormattedMessageDateNew";
+import { useUserListData } from "@/hooks/useUserListData";
+import { useAuthStore } from "@/store/useAuthStore";
+import { Menu, MenuButton, MenuItem } from "@szhsin/react-menu";
 import { useEffect, useRef, useState } from "react";
-import { FaUsers } from "react-icons/fa";
-import { IoEllipsisVertical } from "react-icons/io5";
-import { useNotifications } from "../context/NotificationContext";
-import { db } from "../firebase";
-import useFormattedMessageDateNew from "../hooks/useFormattedMessageDateNew";
-import { useAuthStore } from "../store/useAuthStore";
-import CreateGroup from "./CreateGroup";
+import { FaEllipsisV, FaUsers } from "react-icons/fa";
+import CreateGroup from "./chat/groupChat/createGroup";
+import ProfileSetup from "./profileSetup";
+
 const UserList = ({ manuallyLogout }) => {
-  const [groups, setGroups] = useState([]);
-  const [combinedList, setCombinedList] = useState([]);
   const [showMenu, setShowMenu] = useState(false);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
-  const { formatMessageDate } = useFormattedMessageDateNew();
-  const { notifications } = useNotifications();
+  const [showProfile, setShowProfile] = useState(false);
 
-  const {
-    logedInUser,
-    allUser,
-    setAllUser,
-    setSelectedUserOrGroup,
-    selectedUserOrGroup,
-    isGroupChanged,
-    isUpdateLastConversation,
-  } = useAuthStore();
   const menuRef = useRef(null);
+  const { formatMessageDate } = useFormattedMessageDateNew();
+  const {
+    allUser,
+    logedInUser,
+    selectedUserOrGroup,
+    setSelectedUserOrGroup,
+    isGroupChanged,
+  } = useAuthStore();
 
-  // Fetch Users (excluding logged-in user)
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const usersSnap = await getDocs(collection(db, "users"));
-      const userList = usersSnap.docs.map((doc) => ({
-        type: "user",
-        ...doc.data(),
-      }));
-
-      // Update logged-in user's publicKey if available
-      const currentUserData = userList.find(
-        (user) => user.uid === logedInUser?.uid
-      );
-      if (currentUserData) {
-        logedInUser.publicKey = currentUserData.publicKey;
-      }
-
-      const filteredUsers = userList.filter(
-        (user) => user.uid !== logedInUser?.uid
-      );
-      setAllUser(filteredUsers);
-    };
-
-    fetchUsers();
-  }, [logedInUser]);
-
-  // Fetch Groups where the logged-in user is a member
-  useEffect(() => {
-    const fetchGroups = async () => {
-      const q = query(
-        collection(db, "groups"),
-        where("memberIds", "array-contains", logedInUser?.uid)
-      );
-      const querySnapshot = await getDocs(q);
-      const groupsData = querySnapshot.docs.map((doc) => ({
-        type: "group",
-        groupId: doc.id,
-        ...doc.data(),
-      }));
-
-      setGroups(groupsData);
-    };
-
-    fetchGroups();
-  }, [logedInUser, showCreateGroup, isGroupChanged]);
-
-  // Combine one-on-one users and groups based on last conversation timestamp
-  useEffect(() => {
-    const fetchLastConversations = async () => {
-      if (!logedInUser) return;
-
-      // Query all lastConversations where the logged-in user is a participant.
-      const convoQuery = query(
-        collection(db, "lastConversations"),
-        where("participants", "array-contains", logedInUser.uid)
-      );
-      const convoSnap = await getDocs(convoQuery);
-      const convoData = {};
-      convoSnap.docs.forEach((doc) => {
-        convoData[doc.id] = doc.data();
-      });
-
-      // For one-on-one chats, conversation id = sorted [logedInUser.uid, user.uid]
-      const usersWithTimestamps = allUser.map((user) => {
-        const conversationId = [logedInUser.uid, user.uid].sort().join("_");
-        return {
-          ...user,
-          lastMessageAt: convoData[conversationId]?.lastMessageAt || null,
-          lastMessage: convoData[conversationId]?.lastMessage || "",
-        };
-      });
-
-      // For groups, conversation id = groupId
-      const groupsWithTimestamps = groups.map((group) => ({
-        ...group,
-        lastMessageAt: convoData[group.groupId]?.lastMessageAt || null,
-        lastMessage: convoData[group.groupId]?.lastMessage || "",
-      }));
-
-      // Merge the two lists
-      const mergedList = [...usersWithTimestamps, ...groupsWithTimestamps];
-
-      // Sort so that items with the most recent lastMessageAt come first.
-      mergedList.sort((a, b) => {
-        if (!a.lastMessageAt && !b.lastMessageAt) return 0;
-        if (!a.lastMessageAt) return 1;
-        if (!b.lastMessageAt) return -1;
-        return b.lastMessageAt.toMillis() - a.lastMessageAt.toMillis();
-      });
-
-      setCombinedList(mergedList);
-    };
-
-    fetchLastConversations();
-  }, [allUser, groups, logedInUser, isUpdateLastConversation, notifications]);
-
-  // Handle click outside to close the menu
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setShowMenu(false);
-      }
-    };
-
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, []);
-
-  // Function to handle navigation
-  const selectUserToChat = (item) => {
-    setSelectedUserOrGroup({
-      ...item,
-      ...(item.type === "group"
-        ? { groupId: item.groupId }
-        : { userId: item.uid }),
-    });
-  };
+  const { combinedList, groups, refreshAll } = useUserListData();
 
   useEffect(() => {
     if (selectedUserOrGroup?.type === "group") {
@@ -160,39 +38,57 @@ const UserList = ({ manuallyLogout }) => {
     }
   }, [isGroupChanged, groups]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectUserToChat = (item) => {
+    setSelectedUserOrGroup({
+      ...item,
+      ...(item.type === "group"
+        ? { groupId: item.groupId }
+        : { userId: item.uid }),
+    });
+  };
+
+  const handleRefresh = async () => {
+    await refreshAll();
+    setShowMenu(false);
+  };
+
   return (
     <div style={styles.container}>
       {/* Header Section */}
       <div style={styles.header}>
         <h3 style={styles.headerText}>Wydchat</h3>
 
-        {/* Three Dots Menu */}
-        <div style={styles.menuContainer} ref={menuRef}>
-          <IoEllipsisVertical
-            size={20}
-            color="#fff"
-            style={styles.menuIcon}
-            onClick={() => setShowMenu(!showMenu)}
-          />
-          {showMenu && (
-            <div style={styles.menu}>
-              <div
-                onClick={() => setShowCreateGroup(true)}
-                style={styles.menuItem}
-              >
-                New Group
-              </div>
-              <div onClick={() => manuallyLogout()} style={styles.menuItem}>
-                Logout
-              </div>
-            </div>
-          )}
-        </div>
+        {/* Menu */}
+        <Menu
+          menuButton={
+            <MenuButton className='menu-icon'>
+              <FaEllipsisV size={20} color="#fff" />
+            </MenuButton>
+          }
+          transition
+        >
+          <MenuItem onClick={() => setShowCreateGroup(true)}>
+            New Group
+          </MenuItem>
+          <MenuItem onClick={handleRefresh}>Refresh</MenuItem>
+          <MenuItem onClick={() => setShowProfile(true)}>Profile</MenuItem>
+          <MenuItem onClick={() => manuallyLogout()}>Logout</MenuItem>
+        </Menu>
       </div>
 
-      {/* List of Users & Groups sorted by last conversation */}
+      {/* List */}
       <div style={styles.list}>
-        {combinedList.map((item, i) => (
+        {combinedList?.map((item, i) => (
           <div
             key={i}
             onClick={() => selectUserToChat(item)}
@@ -205,19 +101,22 @@ const UserList = ({ manuallyLogout }) => {
                 : {}),
             }}
           >
-            {/* Avatar or Group Icon */}
-            <div
-              style={item.type === "group" ? styles.groupIcon : styles.avatar}
-            >
-              {item.type === "group" ? (
+            {item.type === "group" ? (
+              <div style={styles.groupIcon}>
                 <FaUsers size={22} color="#fff" />
-              ) : (
-                // item?.username?.charAt(0).toUpperCase()
-                item?.username?.charAt(0).toUpperCase()
-              )}
-            </div>
+              </div>
+            ) : item.photoURL ? (
+              <img
+                src={item.photoURL}
+                alt="User Avatar"
+                style={styles.avatarImage}
+              />
+            ) : (
+              <div style={styles.avatar}>
+                {item?.username?.charAt(0).toUpperCase()}
+              </div>
+            )}
 
-            {/* Name */}
             <div style={styles.info}>
               <div style={styles.name}>
                 {item.type === "group"
@@ -254,9 +153,24 @@ const UserList = ({ manuallyLogout }) => {
             <CreateGroup
               usersList={allUser}
               currentUserId={logedInUser?.uid}
-              currentUserPublicKey={logedInUser.publicKey}
+              currentUserPublicKey={logedInUser?.publicKey}
               setShowCreateGroup={setShowCreateGroup}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Profile Popup */}
+      {showProfile && (
+        <div style={styles.popupOverlay} onClick={() => setShowProfile(false)}>
+          <div style={styles.popup} onClick={(e) => e.stopPropagation()}>
+            <button
+              onClick={() => setShowProfile(false)}
+              style={styles.closeButton}
+            >
+              ✖
+            </button>
+            <ProfileSetup setShowProfile={setShowProfile} />
           </div>
         </div>
       )}
@@ -352,6 +266,14 @@ const styles = {
     marginRight: "14px",
     color: "rgb(28 28 28)",
   },
+  avatarImage: {
+    width: "35px",
+    height: "35px",
+    borderRadius: "50%",
+    objectFit: "cover",
+    marginRight: "10px",
+  },
+
   groupIcon: {
     width: "35px",
     height: "35px",

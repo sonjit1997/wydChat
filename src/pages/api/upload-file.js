@@ -1,9 +1,23 @@
-// src/pages/api/upload-file.js
 import { google } from "googleapis";
 import { PassThrough } from "stream";
-import credentials from "../../googleDriveCredentials.json";
 
 export const prerender = false;
+
+const credentials = {
+  type: import.meta.env.PUBLIC_CLOUD_ACCOUNT_TYPE,
+  project_id: import.meta.env.PUBLIC_CLOUD_PROJECT_ID,
+  private_key_id: import.meta.env.PUBLIC_CLOUD_PRIVATE_KEY_ID,
+  private_key: import.meta.env.PUBLIC_CLOUD_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+  client_email: import.meta.env.PUBLIC_CLOUD_CLIENT_EMAIL,
+  client_id: import.meta.env.PUBLIC_CLOUD_CLIENT_ID,
+  auth_uri: import.meta.env.PUBLIC_CLOUD_AUTH_URI,
+  token_uri: import.meta.env.PUBLIC_CLOUD_TOKEN_URI,
+  auth_provider_x509_cert_url:
+    import.meta.env.PUBLIC_CLOUD_AUTH_PROVIDER_X509_CERT_URL,
+  client_x509_cert_url: import.meta.env.PUBLIC_CLOUD_CLIENT_X509_CERT_URL,
+  universe_domain: import.meta.env.PUBLIC_CLOUD_UNIVERSAL_DOMAIN,
+};
+
 
 export async function POST({ request }) {
   try {
@@ -18,6 +32,7 @@ export async function POST({ request }) {
     }
 
     const arrayBuffer = await file.arrayBuffer();
+    // eslint-disable-next-line no-undef
     const fileBuffer = Buffer.from(arrayBuffer);
     const stream = new PassThrough();
     stream.end(fileBuffer);
@@ -58,7 +73,10 @@ export async function POST({ request }) {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Error uploading file:", error.response?.data || error.message);
+    console.error(
+      "Error uploading file:",
+      error.response?.data || error.message
+    );
     return new Response(JSON.stringify({ error: "Failed to upload file" }), {
       status: 500,
       headers: { "Content-Type": "application/json" },

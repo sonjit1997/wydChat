@@ -1,3 +1,13 @@
+import { db } from "@/firebase";
+import useDeleteUserMessage from "@/hooks/useDeleteUserMessage";
+import useEditUserMessage from "@/hooks/useEditUserMessage";
+import useFormattedMessageDate from "@/hooks/useFormattedMessageDate";
+import useGroupedMessages from "@/hooks/useGroupedMessages";
+import useTyping from "@/hooks/useIsTyping";
+import useSendFile from "@/hooks/useSendFileToGoogleDrive";
+import { useAuthStore } from "@/store/useAuthStore";
+import { decryptMessage, encryptMessage } from "@/utils/cryptoUtils";
+import { getPrivateKey } from "@/utils/indexedDBUtils";
 import {
   addDoc,
   collection,
@@ -12,17 +22,8 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { db } from "@/firebase";
-import useDeleteUserMessage from "@/hooks/useDeleteUserMessage";
-import useEditUserMessage from "@/hooks/useEditUserMessage";
-import useFormattedMessageDate from "@/hooks/useFormattedMessageDate";
-import useGroupedMessages from "@/hooks/useGroupedMessages";
-import useSendFile from "@/hooks/useSendFileToGoogleDrive";
-import { useAuthStore } from "@/store/useAuthStore";
-import { decryptMessage, encryptMessage } from "@/utils/cryptoUtils";
-import { getPrivateKey } from "@/utils/indexedDBUtils";
-import ChatMessages from "../message/chatMessage";
 import InputBox from "../inputBox/InputBox";
+import ChatMessages from "../message/messageDetails";
 import DirectChatHeader from "./directChatHeader";
 
 const UserChat = ({ socket }) => {
@@ -32,6 +33,8 @@ const UserChat = ({ socket }) => {
   const [replyingTo, setReplyingTo] = useState(null);
   const { formatMessageDate } = useFormattedMessageDate();
   const groupedMessages = useGroupedMessages(messages);
+  const [isLoading, setisloading] = useState(false);
+  
   const {
     selectedUserOrGroup,
     setIsUpdateLastConversation,
@@ -47,14 +50,21 @@ const UserChat = ({ socket }) => {
     handleUpdateMessage,
   } = useEditUserMessage(selectedUserOrGroup, logedInUser);
 
-  const { handleDeleteMessage, isDeleting } = useDeleteUserMessage("messages");
+  const { handleDeleteMessage, isDeleting } = useDeleteUserMessage("directMessages");
 
-  const { file, setFile, sendFile, loading } = useSendFile();
+  const { file, setFile, fileType, sendFile, loading} = useSendFile();
+
+  const { isTyping, handleTyping } = useTyping({
+    socket,
+    logedInUser,
+    selectedUserOrGroup,
+    chatType: "dm",
+  });
 
   useEffect(() => {
     if (selectedUserOrGroup) {
       const q = query(
-        collection(db, "messages"),
+        collection(db, "directMessages"),
         where("senderId", "in", [logedInUser.uid, selectedUserOrGroup.uid]),
         where("recipientId", "in", [logedInUser.uid, selectedUserOrGroup.uid]),
         orderBy("createdAt", "asc")
@@ -92,7 +102,7 @@ const UserChat = ({ socket }) => {
         if (unseenMessages.length > 0) {
           const batch = writeBatch(db);
           unseenMessages.forEach((msg) => {
-            const msgRef = doc(db, "messages", msg.id);
+            const msgRef = doc(db, "directMessages", msg.id);
             batch.update(msgRef, { seen: true });
           });
           await batch.commit();
@@ -105,7 +115,7 @@ const UserChat = ({ socket }) => {
 
   const sendMessage = async (e) => {
     e.preventDefault();
-
+    setisloading(true);
     if (text.trim() === "" && !file) return;
 
     try {
@@ -125,7 +135,7 @@ const UserChat = ({ socket }) => {
         );
         const encryptedTextForSender = encryptMessage(text, senderPublicKey);
 
-        await addDoc(collection(db, "messages"), {
+        await addDoc(collection(db, "directMessages"), {
           encryptedTextForRecipient,
           encryptedTextForSender,
           createdAt: serverTimestamp(),
@@ -154,7 +164,7 @@ const UserChat = ({ socket }) => {
             fileLink,
             senderPublicKey
           );
-          await addDoc(collection(db, "messages"), {
+          await addDoc(collection(db, "directMessages"), {
             encryptedTextForRecipient,
             encryptedTextForSender,
             createdAt: serverTimestamp(),
@@ -165,7 +175,7 @@ const UserChat = ({ socket }) => {
             isEdited: false,
             isDeleted: false,
             replyTo: replyingTo ? replyingTo.id : null,
-            messageType: "file",
+            messageType: fileType,
             fileName: file.name,
           });
         }
@@ -198,6 +208,7 @@ const UserChat = ({ socket }) => {
         message: encryptedNotification,
       });
 
+      setisloading(false);
       setText("");
       setReplyingTo(null);
       setIsUpdateLastConversation(!isUpdateLastConversation);
@@ -217,42 +228,19 @@ const UserChat = ({ socket }) => {
   };
 
   const cancelReply = () => {
-    setReplyingTo(null); // Cancel the reply
+    setReplyingTo(null); 
   };
 
-  const [isTyping, setIsTyping] = useState(false);
-
-  useEffect(() => {
-    socket.on("typing", ({ sender }) => {
-      if (sender !== logedInUser.uid) setIsTyping(true);
-    });
-    socket.on("stopTyping", () => setIsTyping(false));
-    return () => {
-      socket.off("typing");
-      socket.off("stopTyping");
-    };
-  }, [socket, logedInUser.uid]);
-
-  const handleTyping = () => {
-    socket.emit("typing", {
-      chatType: "dm",
-      sender: logedInUser.uid,
-      receiver: selectedUserOrGroup.uid,
-    });
-    clearTimeout(window.typingTimeout);
-    window.typingTimeout = setTimeout(() => {
-      socket.emit("stopTyping", {
-        chatType: "dm",
-        receiver: selectedUserOrGroup.uid,
-      });
-    }, 1500);
-  };
 
   if (!selectedUserOrGroup) return null;
 
   return (
     <div style={styles.chatContainer}>
-     <DirectChatHeader selectedUserOrGroup={selectedUserOrGroup}/>
+      <DirectChatHeader
+        selectedUser={selectedUserOrGroup}
+        logedInUser={logedInUser}
+        socket={socket}
+      />
       <ChatMessages
         messages={groupedMessages}
         isGroupChat={false}
@@ -282,6 +270,7 @@ const UserChat = ({ socket }) => {
           setFile={setFile}
           file={file}
           clearFileInput={clearFileInput}
+          isLoading={isLoading}
         />
       </div>
     </div>
@@ -297,7 +286,7 @@ const styles = {
     margin: "0 auto",
     backgroundColor: "#1F1F1F",
     color: "#fff",
-  }
+  },
 };
 
 export default UserChat;

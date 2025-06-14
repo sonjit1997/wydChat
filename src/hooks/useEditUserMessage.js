@@ -38,7 +38,7 @@ const useEditeUserMessage = (selectedUser, user) => {
     );
     const encryptedTextForSender = encryptMessage(editText, senderPublicKey);
 
-    const msgRef = doc(db, "messages", editingMessageId);
+    const msgRef = doc(db, "directMessages", editingMessageId);
 
     try {
       await updateDoc(msgRef, {

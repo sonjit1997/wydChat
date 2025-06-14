@@ -1,10 +1,10 @@
 import { useAuthStore } from "@/store/useAuthStore";
-import ChatPlaceholder from "./chatPlaceholder";
 import UserList from "../userList";
 import Chat from "./chat";
+import ChatPlaceholder from "./chatPlaceholder";
 
 const ChatLayout = ({ manuallyLogout, socket }) => {
-  const { selectedUserOrGroup } = useAuthStore();
+  const { selectedUserOrGroup, logedInUser } = useAuthStore();
 
   return (
     <div style={styles.container}>
@@ -15,7 +15,11 @@ const ChatLayout = ({ manuallyLogout, socket }) => {
 
       {/* Right Side - Chat Details */}
       <div style={styles.chatContainer}>
-        {selectedUserOrGroup ? <Chat socket={socket} /> : <ChatPlaceholder />}
+        {selectedUserOrGroup ? (
+          <Chat socket={socket} />
+        ) : (
+          <ChatPlaceholder logedInUser={logedInUser} />
+        )}
       </div>
     </div>
   );

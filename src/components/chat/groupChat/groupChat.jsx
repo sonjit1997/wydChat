@@ -1,3 +1,13 @@
+import { db } from "@/firebase";
+import useDeleteUserMessage from "@/hooks/useDeleteUserMessage";
+import useEditGroupMessage from "@/hooks/useEditeGroupMessage";
+import useFormattedMessageDate from "@/hooks/useFormattedMessageDate";
+import useGroupedMessages from "@/hooks/useGroupedMessages";
+import useGroupKey from "@/hooks/useGroupKey";
+import useTyping from "@/hooks/useIsTyping";
+import useSendFile from "@/hooks/useSendFileToGoogleDrive";
+import { useAuthStore } from "@/store/useAuthStore";
+import { decryptGroupMessage, encryptGroupMessage } from "@/utils/cryptoUtils";
 import {
   addDoc,
   collection,
@@ -12,21 +22,9 @@ import {
   where,
 } from "firebase/firestore";
 import { useEffect, useState } from "react";
-import { db } from "@/firebase";
-import useEditGroupMessage from "@/hooks/useEditeGroupMessage";
-import useFormattedMessageDate from "@/hooks/useFormattedMessageDate";
-import useGroupedMessages from "@/hooks/useGroupedMessages";
-import useGroupKey from "@/hooks/useGroupKey";
-import { useAuthStore } from "@/store/useAuthStore";
-import {
-  decryptGroupMessage,
-  encryptGroupMessage,
-} from "@/utils/cryptoUtils";
-import ChatMessages from "../message/chatMessage";
-import GroupChatHeader from "./groupChatHeader";
 import InputBox from "../inputBox/InputBox";
-import useDeleteUserMessage from "@/hooks/useDeleteUserMessage";
-import useSendFile from "@/hooks/useSendFileToGoogleDrive";
+import ChatMessages from "../message/messageDetails";
+import GroupChatHeader from "./groupChatHeader";
 
 const GroupChat = ({ socket }) => {
   const {
@@ -39,6 +37,7 @@ const GroupChat = ({ socket }) => {
   const [users, setUsers] = useState([]);
   const [groupMessages, setGroupMessages] = useState([]);
   const [clearFileInput, setClearFileInput] = useState(false);
+  const [isLoading, setisloading] = useState(false);
   const [text, setText] = useState("");
   const { formatMessageDate } = useFormattedMessageDate();
   const groupedMessages = useGroupedMessages(groupMessages);
@@ -54,7 +53,14 @@ const GroupChat = ({ socket }) => {
   const { handleDeleteMessage, isDeleting } =
     useDeleteUserMessage("groupMessages");
 
-  const { file, setFile, sendFile, loading } = useSendFile();
+  const { file, setFile, fileType, sendFile, loading } = useSendFile();
+
+  const { isTyping, handleTyping } = useTyping({
+    socket,
+    logedInUser,
+    selectedUserOrGroup,
+    chatType: "group",
+  });
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -117,6 +123,7 @@ const GroupChat = ({ socket }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+    setisloading(true);
     if (text.trim() === "" && !file) return;
 
     if (!groupKey) return;
@@ -124,7 +131,6 @@ const GroupChat = ({ socket }) => {
     try {
       if (text) {
         const encryptedMessage = encryptGroupMessage(text, groupKey);
-
         await addDoc(collection(db, "groupMessages"), {
           text: encryptedMessage,
           senderId: logedInUser.uid,
@@ -153,7 +159,7 @@ const GroupChat = ({ socket }) => {
             isEdited: false,
             isDeleted: false,
             replyTo: replyingTo ? replyingTo.id : null,
-            messageType: "file",
+            messageType: fileType,
             fileName: file.name,
           });
         }
@@ -177,7 +183,6 @@ const GroupChat = ({ socket }) => {
 
       const senderName = logedInUser.displayName.split(" ")[0];
       const members = selectedUserOrGroup.memberIds;
-console.log(encryptedNotification);
 
       socket.emit("sendGroupMessage", {
         sender: logedInUser.uid,
@@ -187,6 +192,7 @@ console.log(encryptedNotification);
         message: encryptedNotification,
       });
 
+      setisloading(false);
       setText("");
       setReplyingTo(null);
       setIsUpdateLastConversation(!isUpdateLastConversation);
@@ -194,38 +200,6 @@ console.log(encryptedNotification);
     } catch (error) {
       console.error("Error sending message: ", error);
     }
-  };
-
-  const [isTyping, setIsTyping] = useState(false);
-
-  useEffect(() => {
-    socket.on("typing", ({ sender, groupId }) => {
-      if (selectedUserOrGroup.groupId === groupId) setIsTyping(true);
-    });
-    socket.on("stopTyping", () => setIsTyping(false));
-    return () => {
-      socket.off("typing");
-      socket.off("stopTyping");
-    };
-  }, [socket, selectedUserOrGroup]);
-
-  const handleTyping = () => {
-    const members = selectedUserOrGroup.memberIds;
-    socket.emit("typing", {
-      chatType: "group",
-      sender: logedInUser.uid,
-      groupId: selectedUserOrGroup.groupId,
-      members,
-    });
-    clearTimeout(window.groupTypingTimeout);
-    window.groupTypingTimeout = setTimeout(() => {
-      socket.emit("stopTyping", {
-        chatType: "group",
-        sender: logedInUser.uid,
-        groupId: selectedUserOrGroup.groupId,
-        members,
-      });
-    }, 1500);
   };
 
   const [replyingTo, setReplyingTo] = useState(null);
@@ -276,6 +250,7 @@ console.log(encryptedNotification);
         setFile={setFile}
         file={file}
         clearFileInput={clearFileInput}
+        isLoading={isLoading}
       />
     </div>
   );

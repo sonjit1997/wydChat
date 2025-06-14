@@ -1,52 +1,55 @@
-import React, { useEffect } from "react";
-import { useNotifications } from "../context/NotificationContext";
-import { getPrivateKey } from "../utils/indexedDBUtils";
-import { decryptMessage } from "../utils/cryptoUtils";
+import { useNotifications } from "@/context/NotificationContext";
+import useGroupKey from "@/hooks/useGroupKey";
+import { useAuthStore } from "@/store/useAuthStore";
+import { decryptGroupMessage, decryptMessage } from "@/utils/cryptoUtils";
+import { getPrivateKey } from "@/utils/indexedDBUtils";
+import { useEffect } from "react";
 
-const NotificationPanel = ({ user }) => {
+const NotificationPanel = () => {
   const { notifications } = useNotifications();
+  const { selectedUserOrGroup, logedInUser } = useAuthStore();
+  const groupKey = useGroupKey(selectedUserOrGroup, logedInUser);
 
   useEffect(() => {
+    if (!notifications || !logedInUser) return; // ✅ Early return to prevent unnecessary execution
+
     const processNotification = async () => {
-      if (!notifications) return;
+      try {
+        const { senderName, message, type, groupName } = notifications;
+        const privateKey = await getPrivateKey(logedInUser.uid);
 
-      const { senderName, message, type, groupName } = notifications;
-      const privateKey = await getPrivateKey(user.uid);
-      const text = decryptMessage(message, privateKey);
+        const decryptedMessage =
+          type === "group"
+            ? decryptGroupMessage(message, groupKey)
+            : decryptMessage(message, privateKey);
 
-      // Check if notification permission is granted
-      if (Notification.permission === "granted") {
-        const notification = new Notification(senderName, {
-          body: text,
-          icon: "/notification-icon.png",
-        });
+        const sendBy = type === "group" ? groupName : senderName;
 
-        // notification.onclick = (event) => {
-        //   event.preventDefault();
-        //   window.open(`/bookings`, "_blank");
-        // };
-      }
-
-
-      // Request permission if not denied
-      else if (Notification.permission !== "denied") {
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-          const notification = new Notification(senderName, {
-            body: text,
-            icon: "/notification-icon.png",
-          });
-
-          // notification.onclick = (event) => {
-          //   event.preventDefault();
-          //   window.open(`/bookings`, "_blank");
-          // };
+        // ✅ Show notification if permission is granted
+        if (Notification.permission === "granted") {
+          showNotification(sendBy, decryptedMessage);
         }
+        // ✅ Request permission only if not denied
+        else if (Notification.permission !== "denied") {
+          const permission = await Notification.requestPermission();
+          if (permission === "granted") {
+            showNotification(sendBy, decryptedMessage);
+          }
+        }
+      } catch (error) {
+        console.error("Error processing notification:", error);
       }
     };
 
     processNotification();
-  }, [notifications]);
+  }, [notifications, logedInUser, groupKey]);
+
+  const showNotification = (title, message) => {
+    new Notification(title, {
+      body: message,
+      icon: "/notification-icon.png",
+    });
+  };
 
   return null;
 };
